@@ -1,0 +1,244 @@
+---
+title: 'Post-release defects with exception handling: data processing and missing data analysis'
+output:
+  html_document:
+    code_folding: hide
+    toc: yes
+  html_notebook:
+    code_folding: hide
+    fig_caption: yes
+    fig_height: 9
+    fig_width: 12
+    toc: yes
+  pdf_document:
+    fig_caption: yes
+    keep_tex: yes
+    number_sections: yes
+    toc: yes
+  word_document: default
+---
+
+```{r setup}
+suppressMessages(require(rms, quietly = TRUE, warn.conflicts = FALSE))
+require(splines, quietly = TRUE)
+require(plotly, quietly = TRUE, warn.conflicts = FALSE)
+require(Hmisc, quietly = TRUE)
+require(e1071, quietly = TRUE)
+require(caret, quietly = TRUE)
+require(rmarkdown, quietly = TRUE)
+require(BiodiversityR, quietly = TRUE)
+```
+# Constants and Functions
+```{r Constants and Functions}
+NA_THRESHOLD = 0.03
+CORR_THRESHOLD = 0.7
+
+myProjectList <- function(x, projects) {
+  temp_list = vector("list", 0)
+  
+  for (i in 1:length(projects)) {
+    temp_project_data <- x[x[,"Project"] == projects[i],]
+    temp_list <- c(temp_list, list(temp_project_data))
+  }
+  return (temp_list)
+}
+
+myMissingData <- function(x) {  
+  
+  temp_naclus = naclus(x)
+  plot(temp_naclus)
+  
+  if (sum(temp_naclus$sim < NA_THRESHOLD)) {
+    temp_project_data_omitted <- na.omit(x)
+    print(paste("MissingData: Small fraction found: Single imputation or discard. Discard is chosen. Discarded rows:",nrow(x)-nrow(temp_project_data_omitted), "/", nrow(x)))
+  } else {
+    # TODO: implement multiple imputation
+    temp_project_data_omitted = x
+    print(paste("MissingData: High fraction found: Multiple imputation needed! Discarded rows:",nrow(x)-nrow(temp_project_data_omitted), "/", nrow(x)))
+  }
+  return(as.data.frame(temp_project_data_omitted))
+}
+
+```
+# Model Construction
+## Data sources - Individual Analysis
+Our data is used at the file level. We do not consider unit test files, or build generated files. 
+The data comes from five different sources. They are: source control and issue tracker, Understand tool, throws blocks, catch blocks, try blocks.
+
+For the data source load work, please set your working directory to the scripts package root folder. That can be done using the setwd command. Example:
+  setwd("~/Downloads/eh-model-defects2018_data_scripts")
+
+```{r}
+# Load Data sources
+git_data        <- read.csv("input/File_Level-Git-Jira.csv", stringsAsFactors=FALSE)
+understand_data <- read.csv("input/File_Level-Understand.csv", stringsAsFactors=FALSE)
+throws_data     <- read.csv("input/File_Level-Throws_Based.csv", stringsAsFactors=FALSE)
+catch_data      <- read.csv("input/File_Level-Catch_Based.csv", stringsAsFactors=FALSE)
+try_data        <- read.csv("input/File_Level-Try_Based.csv", stringsAsFactors=FALSE)
+
+drop = c("Language")
+
+git_data = git_data[,!(names(git_data) %in% drop)]
+understand_data = understand_data[,!(names(understand_data) %in% drop)]
+throws_data = throws_data[,!(names(throws_data) %in% drop)]
+catch_data = catch_data[,!(names(catch_data) %in% drop)]
+try_data = try_data[,!(names(try_data) %in% drop)]
+
+```
+We inspected the number of files in each data source. We can see that not all data sources have the same amount of files. For example, there are files in which there are no throws blocks or catch blocks.
+We also considered the number of metrics.
+```{r}
+print(paste("DataSource,","NumberFiles,","NumberMetrics"))
+print(paste("VCS_ITS,", nrow(git_data),",", ncol(git_data)))
+print(paste("Understand,", nrow(understand_data),",", ncol(understand_data)))
+print(paste("Throws,", nrow(throws_data),",", ncol(throws_data)))
+print(paste("Catch,", nrow(catch_data),",", ncol(catch_data)))
+print(paste("Try,", nrow(try_data),",", ncol(try_data)))
+```
+### Separate data according to projects
+```{r}
+projects = as.vector(unique(git_data$Project))
+```
+#### Throws blocks data
+```{r, fig.width = 14, fig.height = 6}
+throws_names = names(throws_data)
+throws_data_list = myProjectList(throws_data,projects)
+```
+#### Catch blocks data
+```{r, fig.width = 14, fig.height = 6}
+catch_names = names(catch_data)
+catch_data_list = myProjectList(catch_data,projects)
+```
+#### Try blocks data
+```{r, fig.width = 14, fig.height = 6}
+try_names = names(try_data)
+try_data_list = myProjectList(try_data,projects)
+```
+#### Understand data
+```{r, fig.width = 14, fig.height = 6}
+understand_names = names(understand_data)
+understand_data_list = myProjectList(understand_data,projects)
+```
+#### VCS_ITS data
+```{r, fig.width = 14, fig.height = 6}
+git_names = names(git_data)
+git_data_list = myProjectList(git_data,projects)
+```
+## Data Sources - Combined Analysis
+After separate analysis of each data source we now merge the data sources for model construction.
+
+### Merging Data Sources
+These values are the number of files in each dataset. As we can see, git and understand have a lot more files. This happens due to the lack of catch blocks, throws or possible exceptions in those files.
+```{r}
+for (i in 1:length(projects)) {
+  print(paste(projects[i],",DataSource,","NumberFiles,","NumberMetrics"))
+  print(paste(projects[i],",VCS_ITS,", nrow(as.data.frame(git_data_list[i])),",", ncol(as.data.frame(git_data_list[i]))))
+  print(paste(projects[i],",Understand,", nrow(as.data.frame(understand_data_list[i])),",", ncol(as.data.frame(understand_data_list[i]))))
+  print(paste(projects[i],",Throws,", nrow(as.data.frame(throws_data_list[i])),",", ncol(as.data.frame(throws_data_list[i]))))
+  print(paste(projects[i],",Catch,", nrow(as.data.frame(catch_data_list[i])),",", ncol(as.data.frame(catch_data_list[i]))))
+  print(paste(projects[i],",Try,", nrow(as.data.frame(try_data_list[i])),",", ncol(as.data.frame(try_data_list[i]))))
+}
+```
+Our model construction will follow merging these datasets. We will accept the files that exist in at least one extra dataset besides git and understand. We aim to evaluate the files that are missing in the next step: missing data.
+```{r}
+all_list = vector("list", 0)
+
+for (i in 1:length(projects)) {
+  
+  g = as.data.frame(git_data_list[i])
+  u = as.data.frame(understand_data_list[i])
+  th = as.data.frame(throws_data_list[i])
+  c = as.data.frame(catch_data_list[i])
+  tr = as.data.frame(try_data_list[i])
+  
+  ########################################### Added by Sharareh  ########################################
+  th = rename(th, File.Path = ï..File.Path)
+  #######################################################################################
+  
+  # Understand metrics for Java only: NA means real not applicable, since those don't exist in C#
+  # Adding an extra category for valid non-applicable is suggested and accepted, according to Frank Harrell.
+  NAs_Other <- is.na(u)
+  u[NAs_Other] <- -1
+  
+  # if (g$Project == "nhibernate"){
+  #   drop = c("Language")
+  #   git_data = git_data[,!(names(git_data) %in% drop)]
+  # }
+  
+  # Try metrics for Java only: NA means real not applicable, since those don't exist in C#
+  # Adding an extra category for valid non-applicable is suggested and accepted, according to Frank Harrell.
+  NAs_Other <- is.na(tr$X..Method.Declaration)
+  tr$X..Method.Declaration[NAs_Other] <- -1
+  
+  # Git + Understand
+  g_u = merge(g,u, by = c("File.Path","Project"))
+  
+  # Git + Understand + Throws
+  g_u_t = merge(g_u, th, all.x = TRUE, by = c("File.Path","Project"))
+  
+  # N of Throws: NA actually means 0 throws in that file.
+  NAs_N_Trows <- is.na(g_u_t$X..Throws)  
+  g_u_t$X..Throws[NAs_N_Trows] <- 0
+  
+  # Throws APs: NA means real not applicable, since N Throws is zero.
+  # Adding an extra category for valid non-applicable is suggested and accepted, according to Frank Harrell.
+  NAs_Other <- is.na(g_u_t)
+  g_u_t[NAs_Other] <- -1
+  
+  # Catch blocks + Try blocks
+  # During data inspection we noticed that some catch blocks don't have related try blocks. (The other way around is not true).
+  # That can happen because of non-identified possible exceptions for that try block. 
+  # However, in reality there should be always a try block for any catch block.
+  c_t = merge(c,tr, all.x = TRUE, by = c("File.Path","Project"))
+  
+  # In this case we should not eliminate rows in which catch data is available, but no try data. We don't want to miss catch data, even if try data is missing.
+  # So, we flag these try blocks as real NAs that will be kept as NA for missing data analysis in the model construction.
+  NAs_Try_Blocks <- is.na(c_t)
+  c_t[NAs_Try_Blocks] <- -9
+  
+  # (Git + Understand + Throws) + (Catch blocks + Try Blocks)
+  g_u_t_c_t = merge(g_u_t, c_t, all.x = TRUE, by = c("File.Path","Project"))
+  
+  # N of Catch: NA actually means 0 catchs in that file.
+  NAs_N_Catch <- is.na(g_u_t_c_t$X..Catch)
+  
+  #g_u_t_c_t$X..Catch[NAs_N_Catch] <- 0
+  
+  # Other Catch data: NA means real not applicable, since N Catch is zero.
+  # Adding an extra category for valid non-applicable is suggested and accepted, according to Frank Harrell.
+  NAs_Other <- is.na(g_u_t_c_t)
+  g_u_t_c_t[NAs_Other] <- -1
+  
+  # Now we convert back the missing data due to catch without try blocks.
+  Missing_Try_Blocks <- g_u_t_c_t == -9
+  g_u_t_c_t[Missing_Try_Blocks] <- NA
+  
+  # write.csv(g_u_t_c_t, file = "g_u_t_c_t.csv")
+  # write.csv(c_t, file = "c_t.csv")
+  
+  all_list <- c(all_list, list(g_u_t_c_t))
+}
+```
+
+### MC1: Missing data
+As expected due to the difference on the number of files for each data source, here we evaluate the missing data. If the data has a small fraction of missing (i.e. < 0.03) we chose to discard it, since our number of records is large (i.e. > 100).
+```{r, fig.width = 28, fig.height = 16}
+all_no_missing = vector("list", 0)
+for (i in 1:length(projects)) {
+  print(paste("Project:", projects[i]))
+  temp_data = as.data.frame(all_list[i])
+  
+  temp_omitted = myMissingData(temp_data)
+  all_no_missing <- c(all_no_missing, list(temp_omitted))
+}
+
+
+```
+
+```{r}
+base_names = c(git_names, understand_names)
+save(all_no_missing, projects, try_names, catch_names, throws_names, base_names, file ="0-all_no_missing.RData")
+
+write.table(all_no_missing[[1]][0,], 'all_no_missing.csv'  , append= F, sep=',', row.names = F, col.names = T )
+lapply(all_no_missing, function(x) write.table( x, 'all_no_missing.csv'  , append= T, sep=',', row.names = F, col.names = F ))
+```

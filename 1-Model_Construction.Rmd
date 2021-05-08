@@ -1,0 +1,512 @@
+---
+title: 'Post-release defects with exception handling: model construction and analysis'
+output:
+  html_document:
+    code_folding: hide
+    toc: yes
+    toc_depth: 5
+  html_notebook:
+    code_folding: hide
+    fig_caption: yes
+    fig_height: 9
+    fig_width: 12
+    toc: yes
+  pdf_document:
+    fig_caption: yes
+    keep_tex: yes
+    number_sections: yes
+    toc: yes
+  word_document: default
+---
+# Setup, Constants and Functions, Load data
+```{r setup}
+suppressMessages(require(rms, quietly = TRUE, warn.conflicts = FALSE))
+require(splines, quietly = TRUE)
+require(plotly, quietly = TRUE, warn.conflicts = FALSE)
+require(Hmisc, quietly = TRUE)
+require(e1071, quietly = TRUE)
+require(caret, quietly = TRUE)
+require(BiodiversityR, quietly = TRUE)
+require(logistf, quietly = TRUE)
+require(rmarkdown, quietly = TRUE)
+```
+# Constants and Functions
+```{r}
+NA_THRESHOLD = 0.03
+CORR_THRESHOLD = 0.7
+
+# Remove variables that correlation are non-relevant. These are the identification variables or dependant variable.
+# Warning: This is redefined for each model construction!!!
+dropToPredict = c("File.Path", "Project", "Language", "Table.Name","Name","Kind","Table.Name", "X..Bugs.Post", "File", "Distinct.count.of.Issue.Key.POST", "X..Catch", "X..Throws")
+
+source(file = "construction_functions.R")
+source(file = "analysis_functions.R")
+```
+# Load combined data with no missing
+```{r}
+load(file ="0-all_no_missing.RData")
+```
+
+# Models
+We build in total many models. They were per project, per group of files (i.e. all files, with catch blocks, with throws, with both) and finally we built a base model for reference, and then we include exception handling features according to the model construction analysis.
+
+# 1- Preliminary analysis and results - All files including zero catch and zero throws
+```{r}
+all_list_omitted_1 = all_no_missing
+all_list_omitted = all_list_omitted_1
+
+all_list_omitted = vector("list", 0)
+for (i in 1:length(projects)) {
+  print(paste("Project:", projects[i]))
+  temp_data = as.data.frame(all_list_omitted_1[i])
+  print(paste("nrow:",nrow(temp_data),"ncol:",ncol(temp_data)))
+
+  #Don't do anything in here, repack only.
+
+  all_list_omitted <- c(all_list_omitted, list(list(project=projects[i], data=temp_data)))
+}
+
+```
+## Predictor budget estimation (MC2) and normality adjustment (MC3)
+```{r, fig.width = 14, fig.height = 6}
+modelSelectionAndNormalityAdjustment(all_list_omitted)
+```
+## Model 0 - BASE Only
+Before looking into models that include catch blocks or throws blocks data we would consider also models that only have base metrics. We aim to understand the difference between BASE only metrics and BASE + EH Metrics
+### Drop variables
+```{r, fig.width = 14, fig.height = 6}
+all_list_omitted_m0 = vector("list", 0)
+for (i in 1:length(projects)) {
+  print(paste("Project:", projects[i]))
+  temp_data = all_list_omitted[[i]]$data
+
+  temp_data = temp_data[,!(names(temp_data) %in% catch_names)]
+  temp_data = temp_data[,!(names(temp_data) %in% try_names)]
+  temp_data = temp_data[,!(names(temp_data) %in% throws_names)]
+
+  print(nrow(temp_data))
+  print(names(temp_data))
+
+  all_list_omitted_m0 <- c(all_list_omitted_m0, list(temp_data))
+}
+dropToPredict = c("File.Path",  "Project", "Language", "Table.Name","Name","Kind", "X..Bugs.Post", "File", "Distinct.count.of.Issue.Key.POST")
+```
+### Correlation analysis (MC4), Redundancy Analysis (MC5), Budget based correlation analysis (MC6)
+```{r, fig.width = 14, fig.height = 6}
+all_list_model_m0 = dataApplyReduction(all_list_omitted_m0)
+```
+
+### Setup formulas
+```{r, fig.width = 14, fig.height = 6}
+form_list_bin_m0 = dataSetupFormulasBinary(all_list_model_m0)
+```
+
+### Fit regression model (MC7)
+```{r}
+models_1_BASE = modelFitLogistic(all_list_model_m0,form_list_bin_m0,"ALL.BASE")
+```
+
+## Model 1 - BASE + N Throws + N Catch
+As we can see in the clusters, all the throws blocks data where correlated to each other. Similarly, all catch blocks data and try blocks data were correlated to each other. In this situation, we can see that exception handling metrics are important and we will dig further to understand it better.
+### Drop variables
+```{r, fig.width = 14, fig.height = 6}
+all_list_omitted_m1 = vector("list", 0)
+for (i in 1:length(projects)) {
+  print(paste("Project:", projects[i]))
+  temp_data = all_list_omitted[[i]]$data
+
+  keepForID = c("Project", "File.Path")
+  keepForCatch = c("X..Catch",keepForID)
+  keepForTry = c(keepForID)
+  keepForThrows = c("X..Throws", keepForID)
+
+  catch_names_drop = catch_names[!(catch_names %in% keepForCatch)]
+  try_names_drop = try_names[!(try_names %in% keepForTry)]
+  throws_names_drop = throws_names[!(throws_names %in% keepForThrows)]
+
+  temp_data = temp_data[,!(names(temp_data) %in% catch_names_drop)]
+  temp_data = temp_data[,!(names(temp_data) %in% try_names_drop)]
+  temp_data = temp_data[,!(names(temp_data) %in% throws_names_drop)]
+
+  print(names(temp_data))
+
+  all_list_omitted_m1 <- c(all_list_omitted_m1, list(temp_data))
+}
+dropToPredict = c("File.Path",  "Project", "Language", "Table.Name","Name","Kind", "X..Bugs.Post", "File", "Distinct.count.of.Issue.Key.POST")
+```
+### Correlation analysis (MC4), Redundancy Analysis (MC5), Budget based correlation analysis (MC6)
+```{r, fig.width = 14, fig.height = 6}
+all_list_model_m1 = dataApplyReduction(all_list_omitted_m1)
+```
+
+### Setup formulas
+```{r, fig.width = 14, fig.height = 6}
+form_list_bin_m1 = dataSetupFormulasBinary(all_list_model_m1)
+```
+
+### Fit regression model (MC7)
+```{r}
+models_1_BSEH = modelFitLogistic(all_list_model_m1,form_list_bin_m1,"ALL.BSEH")
+```
+
+## Model Analysis for ALL
+In this section, we present the selected statistics for our analysis. As explained in our approach, they are the steps: MC7, MA1, MA2, MA3 and MA4.
+
+Here we extract the selected statistics and we add the data (columns) to an object that will be exported to CSV in the section Output.
+
+### Fit regression model (MC7): summary stats
+```{r, fig.width = 14, fig.height = 6}
+model_things_1_BASE = vector("list", 0)
+model_things_1_BSEH = vector("list", 0)
+model_things_1_BASE = modelStats(models_1_BASE)
+model_things_1_BSEH = modelStats(models_1_BSEH)
+```
+
+###  Model stability assessment (MA1)
+```{r, fig.width = 14, fig.height = 6}
+model_things_1_BASE = modelValidate(models_1_BASE, model_things_1_BASE)
+model_things_1_BSEH = modelValidate(models_1_BSEH, model_things_1_BSEH)
+```
+
+###  Model significant variables
+```{r, fig.width = 14, fig.height = 6}
+model_things_1_BASE = modelSignificance(models_1_BASE, model_things_1_BASE)
+model_things_1_BSEH = modelSignificance(models_1_BSEH, model_things_1_BSEH)
+```
+
+###  Model simplification (MA2), Predictors’ explanatory power estimation (MA3), Predictors’ effect in the outcome measurement (MA4)
+```{r, fig.width = 14, fig.height = 6}
+model_things_1_BASE = modelSimplification(models_1_BASE, model_things_1_BASE)
+model_things_1_BSEH = modelSimplification(models_1_BSEH, model_things_1_BSEH)
+```
+
+## Output 1
+Here we output the selected statistics from the R functions results and we output in the CSV files in the folder "output".
+
+```{r}
+write.table(data.frame(model_things_1_BASE[[1]])[0,], 'output/base_test_1.csv'  , append= F, sep=',', row.names = F, col.names = T )
+
+lapply(model_things_1_BASE, function(x) write.table( data.frame(x), 'output/base_test_1.csv'  , append= T, sep=',', row.names = F, col.names = F ))
+lapply(model_things_1_BSEH, function(x) write.table( data.frame(x), 'output/base_test_1.csv'  , append= T, sep=',', row.names = F, col.names = F ))
+
+```
+
+# 2- Presented results: Only Files with catch blocks
+## Filtered files: dive in on Catch Blocks
+We now consider that files without catch blocks is missing data. We then re-run the analysis.
+```{r}
+all_list_omitted_2 = all_no_missing
+all_list_omitted = vector("list", 0)
+for (i in 1:length(projects)) {
+  print(paste("Project:", projects[i]))
+  temp_data = as.data.frame(all_list_omitted_2[i])
+  temp_data_bkp = temp_data
+  print(paste("nrow:",nrow(temp_data),"ncol:",ncol(temp_data)))
+  
+  # Make 0 catch blocks become NA and remove NA's.
+  #######################################3## Commented by Sharareh ######################################
+  #No_Catch <- temp_data$X..Catch == 0
+  #temp_data$X..Catch[No_Catch] <- NA
+  #temp_data <- na.omit(temp_data)
+  #####################################################################################################
+  print(paste("nrow:",nrow(temp_data),"ncol:",ncol(temp_data)))
+  
+  if (nrow(temp_data) == 0){
+    write.csv(temp_data_bkp, file = "temp_data.csv")
+  }
+  
+  # Remove throws columns
+  temp_data = temp_data[,!(names(temp_data) %in% throws_names)]
+  print(paste("nrow:",nrow(temp_data),"ncol:",ncol(temp_data)))
+
+  all_list_omitted <- c(all_list_omitted, list(list(project=projects[i], data=temp_data)))
+}
+```
+## Predictor budget estimation (MC2) and normality adjustment (MC3)
+```{r, fig.width = 14, fig.height = 6}
+modelSelectionAndNormalityAdjustment(all_list_omitted)
+```
+## Model 0 - BASE Only
+### Drop variables
+```{r, fig.width = 14, fig.height = 6}
+all_list_omitted_m0 = vector("list", 0)
+for (i in 1:length(projects)) {
+  print(paste("Project:", projects[i]))
+  temp_data = as.data.frame(all_list_omitted[[i]]$data)
+
+  keepForID = c("Project", "File.Path")
+  keepForCatch = c(keepForID)
+  keepForTry = c(keepForID)
+  keepForThrows = c(keepForID)
+
+  catch_names_drop = catch_names[!(catch_names %in% keepForCatch)]
+  try_names_drop = try_names[!(try_names %in% keepForTry)]
+  throws_names_drop = throws_names[!(throws_names %in% keepForThrows)]
+
+  temp_data = temp_data[,!(names(temp_data) %in% catch_names_drop)]
+  temp_data = temp_data[,!(names(temp_data) %in% try_names_drop)]
+  temp_data = temp_data[,!(names(temp_data) %in% throws_names_drop)]
+  
+  print(names(temp_data))
+
+  all_list_omitted_m0 <- c(all_list_omitted_m0, list(temp_data))
+}
+```
+### Correlation analysis (MC4), Redundancy Analysis (MC5), Budget based correlation analysis (MC6)
+```{r, fig.width = 14, fig.height = 6}
+all_list_model_m0 = dataApplyReduction(all_list_omitted_m0)
+```
+
+### Setup formulas
+```{r, fig.width = 14, fig.height = 6}
+form_list_bin_m0 = dataSetupFormulasBinary(all_list_model_m0)
+```
+
+### Fit regression model (MC7)
+```{r}
+models_2_BASE = modelFitLogistic(all_list_model_m0,form_list_bin_m0,"CAT.BASE")
+```
+### Model Analysis for BASE
+In this section, we present the selected statistics for our analysis. As explained in our approach, they are the steps: MC7, MA1, MA2, MA3 and MA4.
+
+Here we extract the selected statistics and we add the data (columns) to an object that will be exported to CSV in the section Output.
+
+#### Fit regression model (MC7): summary stats
+
+```{r, fig.width = 14, fig.height = 6}
+model_things_2_BASE = vector("list", 0)
+model_things_2_BASE = modelStats(models_2_BASE)
+```
+
+####  Model stability assessment (MA1)
+```{r, fig.width = 14, fig.height = 6}
+model_things_2_BASE = modelValidate(models_2_BASE, model_things_2_BASE)
+```
+
+####  Model significant variables
+```{r, fig.width = 14, fig.height = 6}
+model_things_2_BASE = modelSignificance(models_2_BASE, model_things_2_BASE)
+```
+
+####  Model simplification (MA2), Predictors’ explanatory power estimation (MA3), Predictors’ effect in the outcome measurement (MA4)
+```{r, fig.width = 14, fig.height = 6}
+model_things_2_BASE = modelSimplification(models_2_BASE, model_things_2_BASE)
+```
+
+### Model 2 - Extension: BASE + EH Catch
+```{r, fig.width = 14, fig.height = 6}
+all_list_omitted_m2 = all_list_omitted
+```
+
+#### Drop variables - adjust metric sets
+To be able to build new models that are an extension of the base model we removed all insignificant metrics according to the related base model construction. This process makes sense since one can adjust metrics based on expertise. In this case, we learned in the previous step what are the significant metrics for base only, therefore we can remove the other base metrics.
+In this process we need to loop through each model previously built. Each model can have a different set of metrics and, therefore, the construction of their extensions have to be separately done.
+
+```{r, fig.width = 14, fig.height = 6}
+all_list_omitted_m2 = vector("list", 0)
+
+for (i in 1:length(models_2_BASE)) {
+  name = models_2_BASE[[i]]$name
+  project = models_2_BASE[[i]]$project
+  fit = models_2_BASE[[i]]$fit
+  class = as.character(class(fit)[1])
+  print(paste("Project:", project, "Name:", name))
+  
+  if(class != "try-error") {
+  
+    temp_data_index = findProjectData(all_list_omitted,project)
+    temp_data = as.data.frame(all_list_omitted[[temp_data_index]]$data)
+    
+    # Keep catch metrics, remove try and throws, adjust base.
+    keepForID = c("Project", "File.Path")
+    keepForBase = c("Distinct.count.of.Issue.Key.POST",keepForID)
+    keepForTry = c(keepForID)
+    keepForThrows = c(keepForID)
+    
+    base_names_drop = base_names[!(base_names %in% keepForBase)]
+    try_names_drop = try_names[!(try_names %in% keepForTry)]
+    throws_names_drop = throws_names[!(throws_names %in% keepForThrows)]
+  
+    temp_data = temp_data[,!(names(temp_data) %in% try_names_drop)]
+    temp_data = temp_data[,!(names(temp_data) %in% throws_names_drop)]
+    
+    # Remove insignificant metrics according to related base model.
+    temp_sig_index = findModel(model_things_2_BASE,name,project)
+    
+    # Only move forward with the models that are under budget.
+    if (!model_things_2_BASE[[temp_sig_index]][["over_budget"]]){
+      temp_significant = model_things_2_BASE[[temp_sig_index]][["signifcant_r"]]
+      if (!is.na(temp_significant)) {
+        # The significant metrics from the base model as a vector of char.
+        temp_significant_list = unlist(strsplit(temp_significant, ", "))
+      } else
+        temp_significant_list = unlist(strsplit("", ", "))
+      
+      # The insignificant metrics: all from the base model minus the significant ones.
+      base_names_insignificant = base_names_drop[!(base_names_drop %in% temp_significant_list)]
+      # The clean list of metrics for modeling: all metrics minus the base insignificant ones.
+      temp_data = temp_data[,!(names(temp_data) %in% base_names_insignificant)]
+      print(names(temp_data))
+  
+      all_list_omitted_m2 <- c(all_list_omitted_m2, list(list(name=name, project=project, data=temp_data, sig=temp_significant_list)))
+    } else
+      print(paste("!-ERROR-! - model over budget."))
+    
+  } else
+    print(paste("!-ERROR-! - model construction had issues."))
+}
+dropToPredict = c("File.Path",  "Project", "Language", "Table.Name","Name","Kind", "X..Bugs.Post", "File", "Distinct.count.of.Issue.Key.POST")
+```
+#### Correlation analysis (MC4), Redundancy Analysis (MC5), Budget based correlation analysis (MC6)
+```{r, fig.width = 14, fig.height = 6}
+all_list_model_m2 = dataApplyReductionByModel(all_list_omitted_m2, "BSAP")
+```
+#### Setup formulas
+```{r, fig.width = 14, fig.height = 6}
+form_list_bin_m2 = dataSetupFormulasBinaryByModel(all_list_model_m2)
+```
+
+#### Fit regression model (MC7)
+```{r}
+models_2_BSAP = modelFitLogisticByModel(all_list_model_m2,form_list_bin_m2,"CAT.BSAP")
+```
+#### Model Analysis for BSAP
+In this section, we present the selected statistics for our analysis. As explained in our approach, they are the steps: MC7, MA1, MA2, MA3 and MA4.
+
+Here we extract the selected statistics and we add the data (columns) to an object that will be exported to CSV in the section Output.
+
+##### Fit regression model (MC7): summary stats
+```{r, fig.width = 14, fig.height = 6}
+model_things_2_BSAP = vector("list", 0)
+model_things_2_BSAP = modelStats(models_2_BSAP)
+```
+
+#####  Model stability assessment (MA1)
+```{r, fig.width = 14, fig.height = 6}
+model_things_2_BSAP = modelValidate(models_2_BSAP, model_things_2_BSAP)
+```
+
+#####  Model significant variables
+```{r, fig.width = 14, fig.height = 6}
+model_things_2_BSAP = modelSignificance(models_2_BSAP, model_things_2_BSAP)
+```
+
+#####  Model simplification (MA2), Predictors’ explanatory power estimation (MA3), Predictors’ effect in the outcome measurement (MA4)
+```{r, fig.width = 14, fig.height = 6}
+model_things_2_BSAP = modelSimplification(models_2_BSAP, model_things_2_BSAP)
+```
+
+### Model Extension: BASE + EH Try
+```{r, fig.width = 14, fig.height = 6}
+all_list_omitted_m3 = all_list_omitted
+```
+
+#### Drop variables - adjust metric sets
+To be able to build new models that are an extension of the base model we removed all insignificant metrics according to the related base model construction. This process makes sense since one can adjust metrics based on expertise. In this case, we learned in the previous step what are the significant metrics for base only, therefore we can remove the other base metrics.
+In this process we need to loop through each model previously built. Each model can have a different set of metrics and, therefore, the construction of their extensions have to be separately done.
+
+```{r, fig.width = 14, fig.height = 6}
+all_list_omitted_m3 = vector("list", 0)
+
+for (i in 1:length(models_2_BASE)) {
+  name = models_2_BASE[[i]]$name
+  project = models_2_BASE[[i]]$project
+  fit = models_2_BASE[[i]]$fit
+  class = as.character(class(fit)[1])
+  print(paste("Project:", project, "Name:", name))
+  
+  if(class != "try-error") {
+  
+    temp_data_index = findProjectData(all_list_omitted,project)
+    temp_data = as.data.frame(all_list_omitted[[temp_data_index]]$data)
+    
+    # Keep catch metrics, remove try and throws, adjust base.
+    keepForID = c("Project", "File.Path")
+    keepForBase = c("Distinct.count.of.Issue.Key.POST",keepForID)
+    keepForCatch = c(keepForID)
+    keepForThrows = c(keepForID)
+    
+    base_names_drop = base_names[!(base_names %in% keepForBase)]
+    catch_names_drop = catch_names[!(catch_names %in% keepForCatch)]
+    throws_names_drop = throws_names[!(throws_names %in% keepForThrows)]
+  
+    temp_data = temp_data[,!(names(temp_data) %in% catch_names_drop)]
+    temp_data = temp_data[,!(names(temp_data) %in% throws_names_drop)]
+    
+    # Remove insignificant metrics according to related base model.
+    temp_sig_index = findModel(model_things_2_BASE,name,project)
+    
+    # Only move forward with the models that are under budget.
+    if (!model_things_2_BASE[[temp_sig_index]][["over_budget"]]){
+      temp_significant = model_things_2_BASE[[temp_sig_index]][["signifcant_r"]]
+      if (!is.na(temp_significant)) {
+        # The significant metrics from the base model as a vector of char.
+        temp_significant_list = unlist(strsplit(temp_significant, ", "))
+      } else
+        temp_significant_list = unlist(strsplit("", ", "))
+      
+      # The insignificant metrics: all from the base model minus the significant ones.
+      base_names_insignificant = base_names_drop[!(base_names_drop %in% temp_significant_list)]
+      # The clean list of metrics for modeling: all metrics minus the base insignificant ones.
+      temp_data = temp_data[,!(names(temp_data) %in% base_names_insignificant)]
+      print(names(temp_data))
+  
+      all_list_omitted_m3 <- c(all_list_omitted_m3, list(list(name=name, project=project, data=temp_data, sig=temp_significant_list)))
+    } else
+      print(paste("!-ERROR-! - model over budget."))
+    
+  } else
+    print(paste("!-ERROR-! - model construction had issues."))
+}
+dropToPredict = c("File.Path",  "Project", "Language", "Table.Name","Name","Kind", "X..Bugs.Post", "File", "Distinct.count.of.Issue.Key.POST")
+```
+#### Correlation analysis (MC4), Redundancy Analysis (MC5), Budget based correlation analysis (MC6)
+```{r, fig.width = 24, fig.height = 10}
+all_list_model_m3 = dataApplyReductionByModel(all_list_omitted_m3, "BSFC")
+```
+#### Setup formulas
+```{r, fig.width = 14, fig.height = 6}
+form_list_bin_m3 = dataSetupFormulasBinaryByModel(all_list_model_m3)
+```
+#### Fit regression model (MC7)
+```{r}
+models_2_BSFC = modelFitLogisticByModel(all_list_model_m3,form_list_bin_m3,"CAT.BSFC")
+```
+
+#### Model Analysis for BSFC
+In this section, we present the selected statistics for our analysis. As explained in our approach, they are the steps: MC7, MA1, MA2, MA3 and MA4.
+
+Here we extract the selected statistics and we add the data (columns) to an object that will be exported to CSV in the section Output.
+
+##### Fit regression model (MC7): summary stats
+```{r, fig.width = 14, fig.height = 6}
+
+model_things_2_BSFC = vector("list", 0)
+model_things_2_BSFC = modelStats(models_2_BSFC)
+```
+
+#####  Model stability assessment (MA1)
+```{r, fig.width = 14, fig.height = 6}
+model_things_2_BSFC = modelValidate(models_2_BSFC, model_things_2_BSFC)
+```
+
+#####  Model significant variables
+```{r, fig.width = 14, fig.height = 6}
+model_things_2_BSFC = modelSignificance(models_2_BSFC, model_things_2_BSFC)
+```
+
+#####  Model simplification (MA2), Predictors’ explanatory power estimation (MA3), Predictors’ effect in the outcome measurement (MA4)
+```{r, fig.width = 14, fig.height = 6}
+model_things_2_BSFC = modelSimplification(models_2_BSFC, model_things_2_BSFC)
+```
+
+## Output 2
+Here we output the selected statistics from the R functions results and we output in the CSV files in the folder "output".
+```{r}
+write.table(data.frame(model_things_2_BASE[[1]])[0,], 'output/base_test_2.csv'  , append= F, sep=',', row.names = F, col.names = T )
+
+lapply(model_things_2_BASE, function(x) write.table( data.frame(x), 'output/base_test_2.csv'  , append= T, sep=',', row.names = F, col.names = F ))
+lapply(model_things_2_BSAP, function(x) write.table( data.frame(x), 'output/base_test_2.csv'  , append= T, sep=',', row.names = F, col.names = F ))
+lapply(model_things_2_BSFC, function(x) write.table( data.frame(x), 'output/base_test_2.csv'  , append= T, sep=',', row.names = F, col.names = F ))
+
+```
