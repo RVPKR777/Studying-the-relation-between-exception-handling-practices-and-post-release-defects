@@ -201,8 +201,7 @@ for (i in 1:length(projects)) {
   
   # N of Catch: NA actually means 0 catchs in that file.
   NAs_N_Catch <- is.na(g_u_t_c_t$X..Catch)
-  
-  #g_u_t_c_t$X..Catch[NAs_N_Catch] <- 0
+  g_u_t_c_t$X..Catch[NAs_N_Catch] <- 0
   
   # Other Catch data: NA means real not applicable, since N Catch is zero.
   # Adding an extra category for valid non-applicable is suggested and accepted, according to Frank Harrell.
