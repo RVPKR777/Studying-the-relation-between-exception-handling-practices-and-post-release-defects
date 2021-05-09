@@ -24,19 +24,19 @@
 "1","                             Ratio Test           Indexes          Indexes    
 "
 "1"," "
-"1","Obs           828    LR chi2     151.29    R2       0.546    C       0.950    
+"1","Obs          1083    LR chi2     202.37    R2       0.480    C       0.930    
 "
 "1"," "
-"1"," FALSE        791    d.f.            14    g        1.905    Dxy     0.901    
+"1"," FALSE       1021    d.f.            16    g        1.764    Dxy     0.860    
 "
 "1"," "
-"1"," TRUE          37    Pr(> chi2) <0.0001    gr       6.717    gamma   0.902    
+"1"," TRUE          62    Pr(> chi2) <0.0001    gr       5.838    gamma   0.860    
 "
 "1"," "
-"1","max |deriv| 7e-06                          gp       0.075    tau-a   0.077    
+"1","max |deriv| 8e-07                          gp       0.090    tau-a   0.093    
 "
 "1"," "
-"1","                                           Brier    0.025                     
+"1","                                           Brier    0.035                     
 "
 "1"," "
 "1","
@@ -45,49 +45,55 @@
 "1","                                  Coef    S.E.   Wald Z Pr(>|Z|)
 "
 "1"," "
-"1","Intercept                         -5.5262 3.0355 -1.82  0.0687  
+"1","Intercept                         -6.0337 2.1453 -2.81  0.0049  
 "
 "1"," "
-"1","Distinct.count.of.Issue.Key.PRE    2.9349 2.1029  1.40  0.1628  
+"1","Distinct.count.of.Issue.Key.PRE   -0.1907 1.7809 -0.11  0.9147  
 "
 "1"," "
-"1","Churn.PRE                          3.3785 0.4752  7.11  <0.0001 
+"1","Churn.PRE                          2.6292 0.3391  7.75  <0.0001 
 "
 "1"," "
-"1","Distinct.count.of.Commit.Hash.PRE -1.7222 3.7098 -0.46  0.6425  
+"1","Distinct.count.of.Commit.Hash.PRE  0.6184 3.5261  0.18  0.8608  
 "
 "1"," "
-"1","AvgEssential                       3.7919 5.0140  0.76  0.4495  
+"1","AvgCyclomaticModified              1.7134 1.5712  1.09  0.2755  
 "
 "1"," "
-"1","AvgLineBlank                      -6.5277 2.5457 -2.56  0.0103  
+"1","AvgEssential                       2.8717 3.3178  0.87  0.3867  
 "
 "1"," "
-"1","AvgLineComment                     0.4738 1.2994  0.36  0.7154  
+"1","AvgLineBlank                      -2.7054 1.4805 -1.83  0.0676  
 "
 "1"," "
-"1","CountDeclClass                     1.5202 2.3811  0.64  0.5232  
+"1","AvgLineComment                     0.1356 1.0175  0.13  0.8940  
 "
 "1"," "
-"1","CountDeclClassMethod               0.6690 0.9343  0.72  0.4739  
+"1","CountDeclClass                     0.0460 1.5472  0.03  0.9763  
 "
 "1"," "
-"1","CountDeclClassVariable            -0.2929 0.8012 -0.37  0.7147  
+"1","CountDeclClassMethod               0.8469 0.5613  1.51  0.1313  
 "
 "1"," "
-"1","CountDeclInstanceVariable         -0.5374 0.8186 -0.66  0.5115  
+"1","CountDeclClassVariable             0.0525 0.5296  0.10  0.9211  
 "
 "1"," "
-"1","CountDeclMethodDefault             0.9239 1.5761  0.59  0.5578  
+"1","CountDeclInstanceVariable          0.3008 0.4986  0.60  0.5462  
 "
 "1"," "
-"1","CountDeclMethodPrivate             0.9575 0.9243  1.04  0.3002  
+"1","CountDeclMethodDefault             0.2135 0.9665  0.22  0.8252  
 "
 "1"," "
-"1","CountDeclMethodProtected           2.4600 0.7900  3.11  0.0018  
+"1","CountDeclMethodPrivate             0.7973 0.6227  1.28  0.2004  
 "
 "1"," "
-"1","CountLineComment                  -0.6685 1.6063 -0.42  0.6773  
+"1","CountDeclMethodProtected           2.3436 0.5788  4.05  <0.0001 
+"
+"1"," "
+"1","CountLineComment                  -0.3383 1.1374 -0.30  0.7662  
+"
+"1"," "
+"1","MaxEssential                      -0.9529 0.9284 -1.03  0.3047  
 "
 "1"," "
 "1","
@@ -219,19 +225,19 @@
 "1","                             Ratio Test           Indexes          Indexes    
 "
 "1"," "
-"1","Obs          1460    LR chi2     365.32    R2       0.357    C       0.841    
+"1","Obs          1586    LR chi2     408.32    R2       0.357    C       0.839    
 "
 "1"," "
-"1"," FALSE       1184    d.f.            15    g        1.470    Dxy     0.682    
+"1"," FALSE       1263    d.f.            15    g        1.469    Dxy     0.677    
 "
 "1"," "
-"1"," TRUE         276    Pr(> chi2) <0.0001    gr       4.351    gamma   0.682    
+"1"," TRUE         323    Pr(> chi2) <0.0001    gr       4.344    gamma   0.678    
 "
 "1"," "
-"1","max |deriv| 4e-08                          gp       0.197    tau-a   0.209    
+"1","max |deriv| 1e-08                          gp       0.207    tau-a   0.220    
 "
 "1"," "
-"1","                                           Brier    0.111                     
+"1","                                           Brier    0.118                     
 "
 "1"," "
 "1","
@@ -240,52 +246,52 @@
 "1","                                   Coef    S.E.   Wald Z Pr(>|Z|)
 "
 "1"," "
-"1","Intercept                          -4.8969 0.7102 -6.89  <0.0001 
+"1","Intercept                          -4.4778 0.6454 -6.94  <0.0001 
 "
 "1"," "
-"1","Distinct.count.of.Issue.Key.PRE     2.0832 0.6109  3.41  0.0006  
+"1","Distinct.count.of.Issue.Key.PRE     1.6912 0.5338  3.17  0.0015  
 "
 "1"," "
-"1","Churn.PRE                           0.2929 0.1963  1.49  0.1356  
+"1","Churn.PRE                           0.2775 0.1747  1.59  0.1123  
 "
 "1"," "
-"1","Distinct.count.of.Author.Email.PRE -0.4584 0.7443 -0.62  0.5380  
+"1","Distinct.count.of.Author.Email.PRE  0.0082 0.6803  0.01  0.9904  
 "
 "1"," "
-"1","AvgEssential                        0.7070 0.8089  0.87  0.3821  
+"1","AvgEssential                        1.1563 0.7313  1.58  0.1138  
 "
 "1"," "
-"1","AvgLineBlank                        3.0685 0.6474  4.74  <0.0001 
+"1","AvgLineBlank                        2.4792 0.6015  4.12  <0.0001 
 "
 "1"," "
-"1","AvgLineComment                      0.7861 0.3880  2.03  0.0427  
+"1","AvgLineComment                      0.8122 0.3631  2.24  0.0253  
 "
 "1"," "
-"1","CountDeclClass                     -0.0113 0.5461 -0.02  0.9834  
+"1","CountDeclClass                      0.0276 0.4903  0.06  0.9552  
 "
 "1"," "
-"1","CountDeclClassMethod               -0.2355 0.3092 -0.76  0.4462  
+"1","CountDeclClassMethod               -0.3035 0.2693 -1.13  0.2599  
 "
 "1"," "
-"1","CountDeclClassVariable              2.1916 0.3491  6.28  <0.0001 
+"1","CountDeclClassVariable              2.0359 0.3144  6.48  <0.0001 
 "
 "1"," "
-"1","CountDeclInstanceMethod             1.3548 0.3133  4.32  <0.0001 
+"1","CountDeclInstanceMethod             1.2320 0.2993  4.12  <0.0001 
 "
 "1"," "
-"1","CountDeclInstanceVariable          -0.7200 0.2491 -2.89  0.0039  
+"1","CountDeclInstanceVariable          -0.6179 0.2299 -2.69  0.0072  
 "
 "1"," "
-"1","CountDeclMethodDefault             -0.3634 0.2995 -1.21  0.2250  
+"1","CountDeclMethodDefault             -0.1674 0.2715 -0.62  0.5375  
 "
 "1"," "
-"1","CountDeclMethodPrivate              0.3437 0.3476  0.99  0.3227  
+"1","CountDeclMethodPrivate              0.4747 0.3147  1.51  0.1315  
 "
 "1"," "
-"1","CountDeclMethodProtected           -0.2860 0.4181 -0.68  0.4938  
+"1","CountDeclMethodProtected           -0.2844 0.3615 -0.79  0.4315  
 "
 "1"," "
-"1","CountLineComment                    0.9796 0.4937  1.98  0.0472  
+"1","CountLineComment                    0.6438 0.4492  1.43  0.1518  
 "
 "1"," "
 "1","

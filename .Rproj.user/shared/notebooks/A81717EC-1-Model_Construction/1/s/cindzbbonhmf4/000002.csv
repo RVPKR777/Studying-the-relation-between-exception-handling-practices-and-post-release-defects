@@ -4,7 +4,7 @@
 "1","
 "
 "1","[1]"
-"1"," ""Distinct.count.of.Issue.Key.PRE + Churn.PRE + Distinct.count.of.Commit.Hash.PRE + AvgEssential + AvgLineBlank + AvgLineComment + CountDeclClass + CountDeclClassMethod + CountDeclClassVariable + CountDeclInstanceVariable + CountDeclMethodDefault + CountDeclMethodPrivate + CountDeclMethodProtected + CountLineComment"""
+"1"," ""Distinct.count.of.Issue.Key.PRE + Churn.PRE + Distinct.count.of.Commit.Hash.PRE + AvgCyclomaticModified + AvgEssential + AvgLineBlank + AvgLineComment + CountDeclClass + CountDeclClassMethod + CountDeclClassVariable + CountDeclInstanceVariable + CountDeclMethodDefault + CountDeclMethodPrivate + CountDeclMethodProtected + CountLineComment + MaxEssential"""
 "1","
 "
 "1","[1]"
