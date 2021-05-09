@@ -1,0 +1,2 @@
+"0","git_names = names(git_data)"
+"0","git_data_list = myProjectList(git_data,projects)"

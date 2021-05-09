@@ -1,0 +1,23 @@
+"0","base_names = c(git_names, understand_names)"
+"0","save(all_no_missing, projects, try_names, catch_names, throws_names, base_names, file =""0-all_no_missing.RData"")"
+"0",""
+"0","write.table(all_no_missing[[1]][0,], 'all_no_missing.csv'  , append= F, sep=',', row.names = F, col.names = T )"
+"0","lapply(all_no_missing, function(x) write.table( x, 'all_no_missing.csv'  , append= T, sep=',', row.names = F, col.names = F ))"
+"1","[[1]]
+"
+"1","NULL
+"
+"1","
+"
+"1","[[2]]
+"
+"1","NULL
+"
+"1","
+"
+"1","[[3]]
+"
+"1","NULL
+"
+"1","
+"
